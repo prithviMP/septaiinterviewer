@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
@@ -47,7 +47,37 @@ def get_db():
         db.close()
 
 
+_ADDED_COLUMNS = {
+    "sessions": {
+        "level": "VARCHAR NOT NULL DEFAULT 'mid'",
+        "question_count": "INTEGER NOT NULL DEFAULT 5",
+        "focuses": "TEXT NOT NULL DEFAULT '[]'",
+        "overall_score": "FLOAT",
+        "summary": "TEXT",
+        "pillars": "TEXT",
+        "drills": "TEXT",
+    },
+    "questions": {
+        "difficulty": "VARCHAR NOT NULL DEFAULT 'Medium'",
+        "detail": "TEXT",
+    },
+}
+
+
 def init_db() -> None:
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=get_engine())
+    _ensure_columns()
+
+
+def _ensure_columns() -> None:
+    with get_engine().begin() as connection:
+        for table, columns in _ADDED_COLUMNS.items():
+            rows = connection.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            if not rows:
+                continue
+            existing = {row[1] for row in rows}
+            for name, column_type in columns.items():
+                if name not in existing:
+                    connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {column_type}"))

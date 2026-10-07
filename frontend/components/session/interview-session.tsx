@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useInterviewDraft } from "@/components/providers";
+import { NeedsSession } from "@/components/shell/needs-session";
 import {
   AnimatedModal,
   ModalBody,
@@ -13,13 +14,38 @@ import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
 import { PillButton } from "@/components/ui/pill-button";
-import { depthById, languages, questions, type Question } from "@/lib/mock-data";
+import {
+  ApiError,
+  listQuestions,
+  requestHint,
+  submitSession,
+  type InterviewQuestion,
+} from "@/lib/api";
+import { depthById, languages } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+
+type LanguageId = "python" | "javascript" | "java";
+
+const fileNames: Record<LanguageId, string> = {
+  python: "solution.py",
+  javascript: "solution.js",
+  java: "Solution.java",
+};
+
+const rubric = [
+  { title: "Accuracy", detail: "Does the answer solve the prompt?" },
+  { title: "Completeness", detail: "Edges, constraints, and trade-offs." },
+  { title: "Clarity", detail: "Can a reviewer follow the reasoning?" },
+];
 
 function formatTime(total: number) {
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function starterFor(question: InterviewQuestion, language: LanguageId) {
+  return question.starters[language] ?? "";
 }
 
 function SessionBar({
@@ -32,7 +58,7 @@ function SessionBar({
 }: {
   index: number;
   total: number;
-  question: Question;
+  question: InterviewQuestion;
   seconds: number;
   paused: boolean;
   onTogglePause: () => void;
@@ -109,23 +135,22 @@ function CodePad({
   language,
   code,
   notes,
-  testsOpen,
+  casesOpen,
   onLanguage,
   onCode,
   onNotes,
   onReset,
 }: {
-  question: Question;
-  language: string;
+  question: InterviewQuestion;
+  language: LanguageId;
   code: string;
   notes: string;
-  testsOpen: boolean;
-  onLanguage: (language: string) => void;
+  casesOpen: boolean;
+  onLanguage: (language: LanguageId) => void;
   onCode: (code: string) => void;
   onNotes: (notes: string) => void;
   onReset: () => void;
 }) {
-  const file = question.files[language] ?? Object.values(question.files)[0];
   const lines = Math.max(code.split("\n").length, 8);
 
   return (
@@ -135,7 +160,7 @@ function CodePad({
           Language:
           <select
             value={language}
-            onChange={(event) => onLanguage(event.target.value)}
+            onChange={(event) => onLanguage(event.target.value as LanguageId)}
             className="min-h-11 rounded-full bg-surface-container-high px-4 text-xs font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           >
             {languages.map((item) => (
@@ -167,7 +192,7 @@ function CodePad({
             <span className="h-2.5 w-2.5 rounded-full bg-error" />
             <span className="h-2.5 w-2.5 rounded-full bg-primary-container" />
             <span className="h-2.5 w-2.5 rounded-full bg-tertiary" />
-            <span className="ml-2 font-semibold text-secondary">{file.name}</span>
+            <span className="ml-2 font-semibold text-secondary">{fileNames[language]}</span>
           </div>
           <span className="font-bold text-primary">UTF-8</span>
         </div>
@@ -196,7 +221,7 @@ function CodePad({
             <Icon name="psychology" className="text-sm text-primary" />
             Candidate Thought Process & Complexity Notes
           </label>
-          <span className="text-[11px] font-semibold text-secondary">Notes stay on this device</span>
+          <span className="text-[11px] font-semibold text-secondary">Notes stay with this answer</span>
         </div>
         <textarea
           id="thought-process"
@@ -207,23 +232,30 @@ function CodePad({
           className="w-full resize-y rounded-sheet bg-surface-container-low p-3 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
         />
       </div>
-      {testsOpen && (
+      {casesOpen && (
         <div className="space-y-2 rounded-sheet bg-surface-container p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-secondary uppercase">
-              <Icon name="check_circle" className="text-sm text-tertiary" />
-              Sample Test Runner
+              <Icon name="data_object" className="text-sm text-tertiary" />
+              Sample cases
             </span>
-            <Badge tone="tertiary">Passed {question.tests.length}/{question.tests.length} Cases</Badge>
+            <Badge tone="tertiary">Examples</Badge>
           </div>
-          <div className="grid grid-cols-1 gap-2 font-mono sm:grid-cols-3">
-            {question.tests.map((test) => (
-              <div key={test.input} className="flex items-center justify-between rounded bg-surface-container-lowest p-2">
-                <span>{test.input}</span>
-                <span className="font-bold text-primary">{test.output}</span>
-              </div>
-            ))}
-          </div>
+          {question.examples.length === 0 ? (
+            <p className="text-on-surface-variant">This question has no sample cases.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 font-mono sm:grid-cols-2">
+              {question.examples.map((example) => (
+                <div key={`${example.title}-${example.input}`} className="space-y-1 rounded bg-surface-container-lowest p-2">
+                  <span className="font-sans text-[11px] font-bold text-secondary">{example.title}</span>
+                  <div>Input: {example.input}</div>
+                  <div>
+                    Output: <span className="font-bold text-primary">{example.output}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -232,37 +264,96 @@ function CodePad({
 
 export function InterviewSession() {
   const router = useRouter();
-  const { draft } = useInterviewDraft();
+  const { draft, ready } = useInterviewDraft();
   const depth = depthById(draft.depth);
-  const sessionQuestions = useMemo(() => questions.slice(0, depth.questions), [depth.questions]);
+  const [sessionQuestions, setSessionQuestions] = useState<InterviewQuestion[] | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [seconds, setSeconds] = useState(depth.minutes * 60);
-  const [language, setLanguage] = useState("python");
+  const [language, setLanguage] = useState<LanguageId>("python");
   const [answers, setAnswers] = useState<Record<string, { code: string; notes: string }>>({});
   const [rubricOpen, setRubricOpen] = useState(true);
   const [hintsLeft, setHintsLeft] = useState(2);
-  const [testsOpen, setTestsOpen] = useState(false);
+  const [hintText, setHintText] = useState("");
+  const [hintStatus, setHintStatus] = useState("");
+  const [casesOpen, setCasesOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  const question = sessionQuestions[Math.min(index, sessionQuestions.length - 1)];
-  const stored = answers[question.id];
-  const code = stored?.code ?? question.files[language]?.code ?? Object.values(question.files)[0].code;
-  const notes = stored?.notes ?? "";
-  const progress = Math.round((index / sessionQuestions.length) * 100);
+  useEffect(() => {
+    if (!ready || !draft.sessionId) return;
+    let cancelled = false;
+    setLoadError("");
+    setSessionQuestions(null);
+    listQuestions(draft.sessionId)
+      .then((body) => {
+        if (!cancelled) setSessionQuestions(body.questions);
+      })
+      .catch((caught) => {
+        if (!cancelled) {
+          setLoadError(caught instanceof ApiError ? caught.message : "Could not load the questions.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, draft.sessionId]);
 
   useEffect(() => {
     setSeconds(depth.minutes * 60);
-    setIndex(0);
-  }, [depth.minutes, depth.questions]);
+  }, [depth.minutes]);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || !sessionQuestions) return;
     const timer = window.setInterval(() => {
       setSeconds((value) => (value <= 0 ? 0 : value - 1));
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [paused]);
+  }, [paused, sessionQuestions]);
+
+  if (!ready) {
+    return <p className="px-6 py-24 text-center text-sm font-semibold text-secondary">Loading session…</p>;
+  }
+
+  if (!draft.sessionId) {
+    return (
+      <NeedsSession
+        title="No interview is open"
+        detail="Start from topic setup so Gemini can write the questions for this session."
+      />
+    );
+  }
+
+  if (loadError) {
+    return (
+      <NeedsSession
+        title="Questions did not load"
+        detail={loadError}
+      />
+    );
+  }
+
+  if (!sessionQuestions) {
+    return <p className="px-6 py-24 text-center text-sm font-semibold text-secondary">Loading your questions…</p>;
+  }
+
+  if (sessionQuestions.length === 0) {
+    return (
+      <NeedsSession
+        title="This session has no questions"
+        detail="Go back to topic setup and start a new interview."
+      />
+    );
+  }
+
+  const question = sessionQuestions[Math.min(index, sessionQuestions.length - 1)];
+  const stored = answers[question.id];
+  const code = stored?.code ?? starterFor(question, language);
+  const notes = stored?.notes ?? "";
+  const progress = Math.round((index / sessionQuestions.length) * 100);
+  const last = index >= sessionQuestions.length - 1;
 
   function save(next: { code?: string; notes?: string }) {
     setAnswers((current) => ({
@@ -274,8 +365,8 @@ export function InterviewSession() {
     }));
   }
 
-  function changeLanguage(next: string) {
-    const previousStarter = question.files[language]?.code ?? "";
+  function changeLanguage(next: LanguageId) {
+    const previousStarter = starterFor(question, language);
     setLanguage(next);
     setAnswers((current) => {
       const existing = current[question.id];
@@ -283,14 +374,50 @@ export function InterviewSession() {
       return {
         ...current,
         [question.id]: {
-          code: untouched ? (question.files[next]?.code ?? "") : existing.code,
+          code: untouched ? starterFor(question, next) : existing.code,
           notes: existing?.notes ?? "",
         },
       };
     });
   }
 
-  const last = index >= sessionQuestions.length - 1;
+  function openHint() {
+    if (!draft.sessionId || hintsLeft === 0) return;
+    setHintText("");
+    setHintStatus("Writing a nudge…");
+    requestHint(draft.sessionId, question.id)
+      .then((body) => {
+        setHintText(body.hint);
+        setHintStatus("");
+      })
+      .catch((caught) => {
+        setHintStatus(caught instanceof ApiError ? caught.message : "Could not load a hint.");
+      });
+  }
+
+  async function finish() {
+    if (!draft.sessionId || !sessionQuestions) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      await submitSession(
+        draft.sessionId,
+        sessionQuestions.map((item) => {
+          const saved = answers[item.id];
+          const answerCode = saved?.code ?? starterFor(item, language);
+          const answerNotes = saved?.notes ?? "";
+          return {
+            question_id: item.id,
+            response: `Code:\n${answerCode}\n\nNotes:\n${answerNotes}`,
+          };
+        }),
+      );
+      router.push("/scorecard");
+    } catch (caught) {
+      setSubmitError(caught instanceof ApiError ? caught.message : "Could not score the interview.");
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 pb-28 sm:px-6 lg:px-8">
@@ -307,7 +434,7 @@ export function InterviewSession() {
           <article className="space-y-5 rounded-card bg-surface-container-lowest p-6 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-extrabold tracking-wider text-secondary uppercase">{question.eyebrow}</p>
+                <p className="text-[11px] font-extrabold tracking-wider text-secondary uppercase">{question.topic}</p>
                 <h1 className="text-xl leading-tight font-bold">{question.title}</h1>
               </div>
               <button
@@ -318,7 +445,7 @@ export function InterviewSession() {
                 <Icon name="bookmark_border" />
               </button>
             </div>
-            <p className="text-sm leading-relaxed text-on-surface-variant">{question.prompt}</p>
+            <p className="text-sm leading-relaxed text-on-surface-variant">{question.question_text}</p>
             <div className="space-y-2">
               <p className="text-xs font-bold tracking-wider uppercase">Constraints & Invariants</p>
               <ul className="space-y-1.5 rounded-sheet bg-surface-container-low p-3.5 font-mono text-xs text-on-surface-variant">
@@ -334,16 +461,15 @@ export function InterviewSession() {
               <p className="text-xs font-bold tracking-wider uppercase">Test Cases & Examples</p>
               {question.examples.map((example) => (
                 <div key={example.title} className="space-y-1.5 rounded-sheet bg-surface-container-low p-3.5 text-xs">
-                  <div className="flex items-center justify-between text-on-surface-variant">
-                    <span className="font-bold text-secondary">{example.title}</span>
-                    <span className="font-mono text-[11px] text-tertiary">{example.tag}</span>
-                  </div>
+                  <div className="font-bold text-secondary">{example.title}</div>
                   <div className="space-y-0.5 rounded bg-surface-container-lowest p-2 font-mono">
                     <div>Input: {example.input}</div>
                     <div>
                       Output: <strong className="text-primary">{example.output}</strong>
                     </div>
-                    <p className="pt-1 font-sans text-[11px] text-on-surface-variant">{example.explanation}</p>
+                    {example.explanation && (
+                      <p className="pt-1 font-sans text-[11px] text-on-surface-variant">{example.explanation}</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -363,14 +489,14 @@ export function InterviewSession() {
                 </span>
                 <span>
                   <span className="block text-xs font-bold">Gemini Evaluation Rubric</span>
-                  <span className="text-[11px] text-on-surface-variant">{question.rubric.length} core metrics for this question</span>
+                  <span className="text-[11px] text-on-surface-variant">{rubric.length} core metrics for this question</span>
                 </span>
               </span>
               <Icon name={rubricOpen ? "expand_less" : "expand_more"} className="text-secondary" />
             </button>
             {rubricOpen && (
               <AnimatedTooltip
-                items={question.rubric.map((item) => ({
+                items={rubric.map((item) => ({
                   id: item.title,
                   name: item.title,
                   designation: item.detail,
@@ -381,6 +507,7 @@ export function InterviewSession() {
 
           <AnimatedModal>
             <ModalTrigger
+              onOpen={openHint}
               className={cn(
                 "motion-pop inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-secondary-fixed px-5 py-3 text-xs font-bold text-on-secondary-fixed shadow-secondary motion-safe:hover:scale-[1.02]",
                 hintsLeft === 0 && "pointer-events-none opacity-45",
@@ -402,10 +529,12 @@ export function InterviewSession() {
                   <Icon name="close" />
                 </ModalClose>
               </div>
-              <p className="mt-2 text-sm leading-relaxed">{question.hint}</p>
+              <p className="mt-2 text-sm leading-relaxed">{hintText || hintStatus || "Writing a nudge…"}</p>
               <ModalClose
                 className="mt-4 inline-flex min-h-11 items-center rounded-full bg-surface px-4 text-xs font-bold text-on-tertiary-fixed"
-                onClose={() => setHintsLeft((value) => Math.max(0, value - 1))}
+                onClose={() => {
+                  if (hintText) setHintsLeft((value) => Math.max(0, value - 1));
+                }}
               >
                 Use this hint
               </ModalClose>
@@ -449,34 +578,39 @@ export function InterviewSession() {
             language={language}
             code={code}
             notes={notes}
-            testsOpen={testsOpen}
+            casesOpen={casesOpen}
             onLanguage={changeLanguage}
             onCode={(value) => save({ code: value })}
             onNotes={(value) => save({ notes: value })}
-            onReset={() => save({ code: question.files[language]?.code ?? "" })}
+            onReset={() => save({ code: starterFor(question, language) })}
           />
           <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
             <div className="flex w-full items-center gap-3 sm:w-auto">
-              <PillButton tone="ghost" disabled={index === 0} onClick={() => setIndex((value) => value - 1)}>
+              <PillButton tone="ghost" disabled={index === 0 || submitting} onClick={() => setIndex((value) => value - 1)}>
                 <Icon name="arrow_back" className="text-sm" />
                 Previous
               </PillButton>
-              <PillButton tone="sky" onClick={() => setTestsOpen(true)}>
-                <Icon name="play_arrow" className="text-sm text-tertiary" />
-                Run Sample Tests
+              <PillButton tone="sky" onClick={() => setCasesOpen(true)}>
+                <Icon name="visibility" className="text-sm text-tertiary" />
+                Show sample cases
               </PillButton>
             </div>
             <PillButton
               className="w-full shadow-primary-lg sm:w-auto"
+              disabled={submitting}
               onClick={() => {
-                if (last) router.push("/scorecard");
+                if (last) void finish();
                 else setIndex((value) => value + 1);
               }}
             >
-              {last ? "Submit Interview" : "Submit & Next Question"}
-              <Icon name="arrow_forward" />
+              {submitting ? "Scoring your answers…" : last ? "Submit Interview" : "Submit & Next Question"}
+              {!submitting && <Icon name="arrow_forward" />}
             </PillButton>
           </div>
+          {submitting && (
+            <p className="text-center text-xs font-semibold text-secondary sm:text-right">Scoring your answers…</p>
+          )}
+          {submitError && <p className="text-center text-xs font-semibold text-error sm:text-right">{submitError}</p>}
         </div>
       </div>
 

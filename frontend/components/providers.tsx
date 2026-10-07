@@ -10,6 +10,7 @@ export type InterviewDraft = {
   level: LevelId;
   depth: DepthId;
   focuses: string[];
+  sessionId: string | null;
 };
 
 const STORAGE_KEY = "aic-interview-draft";
@@ -19,6 +20,7 @@ export const defaultDraft: InterviewDraft = {
   level: "mid",
   depth: "standard",
   focuses: ["Technical Accuracy", "Edge Case Handling", "Big-O Complexity"],
+  sessionId: null,
 };
 
 type DraftContextValue = {
@@ -39,7 +41,10 @@ export function InterviewDraftProvider({ children }: { children: React.ReactNode
       if (raw) {
         const parsed = JSON.parse(raw) as InterviewDraft;
         if (Array.isArray(parsed.topics) && parsed.level && parsed.depth && Array.isArray(parsed.focuses)) {
-          setDraftState(parsed);
+          setDraftState({
+            ...parsed,
+            sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : null,
+          });
         }
       }
     } catch {

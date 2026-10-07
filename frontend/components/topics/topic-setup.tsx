@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useInterviewDraft } from "@/components/providers";
+import { ApiError, createSession } from "@/lib/api";
 import { AmbientGlow } from "@/components/ui/ambient-glow";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
@@ -18,6 +20,28 @@ export function TopicSetup() {
   const depth = depthById(draft.depth);
   const level = levelById(draft.level);
   const canStart = draft.topics.length > 0;
+  const [writing, setWriting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function begin() {
+    const count = depth.questions;
+    if (count !== 3 && count !== 5 && count !== 8) return;
+    setWriting(true);
+    setError("");
+    try {
+      const session = await createSession({
+        topics: draft.topics,
+        level: draft.level,
+        question_count: count,
+        focuses: draft.focuses,
+      });
+      setDraft((current) => ({ ...current, sessionId: session.id }));
+      router.push("/session");
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "Could not write the questions.");
+      setWriting(false);
+    }
+  }
 
   function toggleTopic(id: string) {
     setDraft((current) => ({
@@ -279,12 +303,16 @@ export function TopicSetup() {
               </div>
               <PillButton
                 className="w-full py-4 text-base shadow-primary-lg"
-                disabled={!canStart}
-                onClick={() => router.push("/session")}
+                disabled={!canStart || writing}
+                onClick={() => void begin()}
               >
-                Begin Interview Session
-                <Icon name="arrow_forward" />
+                {writing ? "Writing your questions…" : "Begin Interview Session"}
+                {!writing && <Icon name="arrow_forward" />}
               </PillButton>
+              {writing && (
+                <p className="mt-3 text-center text-xs font-semibold text-secondary">Writing your questions…</p>
+              )}
+              {error && <p className="mt-3 text-center text-xs font-semibold text-error">{error}</p>}
               {!canStart && (
                 <p className="mt-3 text-center text-xs font-semibold text-error">Select at least one topic to begin.</p>
               )}

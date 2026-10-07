@@ -22,10 +22,25 @@ export function AnimatedModal({ children }: { children: React.ReactNode }) {
   return <ModalContext.Provider value={{ open, setOpen }}>{children}</ModalContext.Provider>;
 }
 
-export function ModalTrigger({ children, className }: { children: React.ReactNode; className?: string }) {
+export function ModalTrigger({
+  children,
+  className,
+  onOpen,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onOpen?: () => void;
+}) {
   const { setOpen } = useModal();
   return (
-    <button type="button" className={className} onClick={() => setOpen(true)}>
+    <button
+      type="button"
+      className={className}
+      onClick={() => {
+        onOpen?.();
+        setOpen(true);
+      }}
+    >
       {children}
     </button>
   );

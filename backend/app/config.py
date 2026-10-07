@@ -6,6 +6,8 @@ class Settings(BaseSettings):
 
     database_path: str = "data/interviewer.db"
     cors_origins: str = "http://localhost:3000"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
 
     @property
     def cors_origin_list(self) -> list[str]:
