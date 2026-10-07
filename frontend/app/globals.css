@@ -1,1 +1,92 @@
 @import "tailwindcss";
+
+@theme inline {
+  --color-primary: var(--theme-color-primary);
+  --color-on-primary: var(--theme-color-on-primary);
+  --color-primary-container: var(--theme-color-primary-container);
+  --color-on-primary-container: var(--theme-color-on-primary-container);
+  --color-primary-fixed: var(--theme-color-primary-fixed);
+  --color-primary-fixed-dim: var(--theme-color-primary-fixed-dim);
+  --color-on-primary-fixed: var(--theme-color-on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--theme-color-on-primary-fixed-variant);
+  --color-inverse-primary: var(--theme-color-inverse-primary);
+
+  --color-secondary: var(--theme-color-secondary);
+  --color-on-secondary: var(--theme-color-on-secondary);
+  --color-secondary-container: var(--theme-color-secondary-container);
+  --color-on-secondary-container: var(--theme-color-on-secondary-container);
+  --color-secondary-fixed: var(--theme-color-secondary-fixed);
+  --color-secondary-fixed-dim: var(--theme-color-secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--theme-color-on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--theme-color-on-secondary-fixed-variant);
+
+  --color-tertiary: var(--theme-color-tertiary);
+  --color-on-tertiary: var(--theme-color-on-tertiary);
+  --color-tertiary-container: var(--theme-color-tertiary-container);
+  --color-on-tertiary-container: var(--theme-color-on-tertiary-container);
+  --color-tertiary-fixed: var(--theme-color-tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--theme-color-tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--theme-color-on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--theme-color-on-tertiary-fixed-variant);
+
+  --color-surface: var(--theme-color-surface);
+  --color-surface-dim: var(--theme-color-surface-dim);
+  --color-surface-bright: var(--theme-color-surface-bright);
+  --color-surface-variant: var(--theme-color-surface-variant);
+  --color-surface-tint: var(--theme-color-surface-tint);
+  --color-surface-container-lowest: var(--theme-color-surface-container-lowest);
+  --color-surface-container-low: var(--theme-color-surface-container-low);
+  --color-surface-container: var(--theme-color-surface-container);
+  --color-surface-container-high: var(--theme-color-surface-container-high);
+  --color-surface-container-highest: var(--theme-color-surface-container-highest);
+  --color-on-surface: var(--theme-color-on-surface);
+  --color-on-surface-variant: var(--theme-color-on-surface-variant);
+  --color-inverse-surface: var(--theme-color-inverse-surface);
+  --color-inverse-on-surface: var(--theme-color-inverse-on-surface);
+  --color-background: var(--theme-color-background);
+  --color-on-background: var(--theme-color-on-background);
+  --color-outline: var(--theme-color-outline);
+  --color-outline-variant: var(--theme-color-outline-variant);
+
+  --color-error: var(--theme-color-error);
+  --color-on-error: var(--theme-color-on-error);
+  --color-error-container: var(--theme-color-error-container);
+  --color-on-error-container: var(--theme-color-on-error-container);
+
+  --font-sans: var(--theme-font-sans);
+  --font-mono: var(--theme-font-mono);
+
+  --radius-card: var(--theme-radius-card);
+  --radius-panel: var(--theme-radius-panel);
+  --radius-sheet: var(--theme-radius-sheet);
+
+  --shadow-primary: var(--theme-shadow-primary);
+  --shadow-primary-lg: var(--theme-shadow-primary-lg);
+  --shadow-secondary: var(--theme-shadow-secondary);
+  --shadow-tertiary: var(--theme-shadow-tertiary);
+  --shadow-card: var(--theme-shadow-card);
+  --shadow-header: var(--theme-shadow-header);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--theme-color-surface);
+    color: var(--theme-color-on-surface);
+    font-family: var(--theme-font-sans);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}

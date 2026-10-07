@@ -1,0 +1,88 @@
+// Candy theme. Change colors, type, radius, and shadow here.
+// Components read these through Tailwind utilities (bg-primary, rounded-card, shadow-primary).
+
+:root {
+  --theme-color-primary: #e040a0;
+  --theme-color-on-primary: #ffffff;
+  --theme-color-primary-container: #f080c0;
+  --theme-color-on-primary-container: #2e1a28;
+  --theme-color-primary-fixed: #ffd6ee;
+  --theme-color-primary-fixed-dim: #f0a0cc;
+  --theme-color-on-primary-fixed: #3d0028;
+  --theme-color-on-primary-fixed-variant: #a02070;
+  --theme-color-inverse-primary: #f0a0cc;
+
+  --theme-color-secondary: #7c52aa;
+  --theme-color-on-secondary: #ffffff;
+  --theme-color-secondary-container: #eedcff;
+  --theme-color-on-secondary-container: #2e2040;
+  --theme-color-secondary-fixed: #eedcff;
+  --theme-color-secondary-fixed-dim: #c8a8e8;
+  --theme-color-on-secondary-fixed: #1a1030;
+  --theme-color-on-secondary-fixed-variant: #4a3068;
+
+  --theme-color-tertiary: #0096cc;
+  --theme-color-on-tertiary: #ffffff;
+  --theme-color-tertiary-container: #40c0ee;
+  --theme-color-on-tertiary-container: #00334d;
+  --theme-color-tertiary-fixed: #c8eaff;
+  --theme-color-tertiary-fixed-dim: #80d0f0;
+  --theme-color-on-tertiary-fixed: #001a33;
+  --theme-color-on-tertiary-fixed-variant: #005580;
+
+  --theme-color-surface: #fef7ff;
+  --theme-color-surface-dim: #e0d6e0;
+  --theme-color-surface-bright: #fef7ff;
+  --theme-color-surface-variant: #f2e8f2;
+  --theme-color-surface-tint: #e040a0;
+  --theme-color-surface-container-lowest: #ffffff;
+  --theme-color-surface-container-low: #fbf2fb;
+  --theme-color-surface-container: #f8eef8;
+  --theme-color-surface-container-high: #f2e8f2;
+  --theme-color-surface-container-highest: #ece2ec;
+  --theme-color-on-surface: #2e1a28;
+  --theme-color-on-surface-variant: #604868;
+  --theme-color-inverse-surface: #2e1a28;
+  --theme-color-inverse-on-surface: #fef7ff;
+  --theme-color-background: #fef7ff;
+  --theme-color-on-background: #2e1a28;
+  --theme-color-outline: #907898;
+  --theme-color-outline-variant: #dcc8e0;
+
+  --theme-color-error: #e53e3e;
+  --theme-color-on-error: #ffffff;
+  --theme-color-error-container: #ffe8e8;
+  --theme-color-on-error-container: #9b1c1c;
+
+  --theme-font-sans: var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --theme-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --theme-radius-card: 1.25rem;
+  --theme-radius-panel: 2rem;
+  --theme-radius-sheet: 1rem;
+  --theme-radius-pill: 9999px;
+
+  --theme-shadow-primary: 0 4px 16px rgb(224 64 160 / 0.2);
+  --theme-shadow-primary-lg: 0 8px 24px rgb(224 64 160 / 0.35);
+  --theme-shadow-secondary: 0 4px 16px rgb(124 82 170 / 0.2);
+  --theme-shadow-tertiary: 0 4px 16px rgb(0 150 204 / 0.2);
+  --theme-shadow-card: 0 8px 32px rgb(124 82 170 / 0.12);
+  --theme-shadow-header: 0 4px 20px rgb(224 64 160 / 0.06);
+
+  --theme-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --theme-duration: 200ms;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+  line-height: 1;
+  user-select: none;
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-pop {
+    transform: none !important;
+    transition: none !important;
+  }
+}
